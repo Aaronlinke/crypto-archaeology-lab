@@ -1,9 +1,9 @@
 // Utility functions for exporting data as CSV or JSON
+// Uses data URIs to work reliably inside preview iframes
 
 export function downloadJSON(data: unknown, filename: string) {
   const json = JSON.stringify(data, null, 2);
-  const blob = new Blob([json], { type: "application/json" });
-  triggerDownload(blob, `${filename}.json`);
+  triggerDownload(json, "application/json", `${filename}.json`);
 }
 
 export function downloadCSV(rows: Record<string, unknown>[], filename: string) {
@@ -21,22 +21,39 @@ export function downloadCSV(rows: Record<string, unknown>[], filename: string) {
         .join(",")
     ),
   ];
-  const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
-  triggerDownload(blob, `${filename}.csv`);
-}
-
-function triggerDownload(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  triggerDownload(csvRows.join("\n"), "text/csv", `${filename}.csv`);
 }
 
 export function downloadText(text: string, filename: string) {
-  const blob = new Blob([text], { type: "text/plain" });
-  triggerDownload(blob, filename);
+  triggerDownload(text, "text/plain", filename);
+}
+
+function triggerDownload(content: string, mimeType: string, filename: string) {
+  // Try blob URL first, fall back to data URI
+  try {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    // Small delay before cleanup to ensure download starts
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 150);
+  } catch {
+    // Fallback: data URI approach
+    const encoded = encodeURIComponent(content);
+    const dataUri = `data:${mimeType};charset=utf-8,${encoded}`;
+    const a = document.createElement("a");
+    a.href = dataUri;
+    a.download = filename;
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => document.body.removeChild(a), 150);
+  }
 }

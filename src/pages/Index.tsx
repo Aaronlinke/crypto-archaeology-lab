@@ -8,6 +8,7 @@ import SystemModulesPanel from "@/components/guardian/SystemModulesPanel";
 import BreachHistoryPanel from "@/components/guardian/BreachHistoryPanel";
 import LiveTerminal from "@/components/guardian/LiveTerminal";
 import SettingsPanel from "@/components/guardian/SettingsPanel";
+import ExploitDetailPanel from "@/components/guardian/ExploitDetailPanel";
 import { GuardianSettingsProvider } from "@/lib/guardian-settings";
 
 const Index = () => {
@@ -28,6 +29,7 @@ const Index = () => {
             <WalletScannerPanel />
             <BreachHistoryPanel />
           </div>
+          <ExploitDetailPanel />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <ThreatTimelineChart />
             <LiveTerminal />
