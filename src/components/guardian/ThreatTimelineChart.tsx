@@ -1,20 +1,30 @@
 import { useEffect, useState } from "react";
 import { generateThreatTimeline } from "@/lib/guardian-data";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import PanelToolbar from "./PanelToolbar";
+import { downloadJSON, downloadCSV } from "@/lib/export-utils";
+import { useGuardianSettings } from "@/lib/guardian-settings";
 
 const ThreatTimelineChart = () => {
+  const { settings } = useGuardianSettings();
   const [data, setData] = useState(generateThreatTimeline());
 
   useEffect(() => {
-    const interval = setInterval(() => setData(generateThreatTimeline()), 10000);
+    const interval = setInterval(() => setData(generateThreatTimeline()), settings.refreshRateMs * 2);
     return () => clearInterval(interval);
-  }, []);
+  }, [settings.refreshRateMs]);
 
   return (
     <div className="rounded-lg border border-border bg-card p-5 glow-green">
-      <h2 className="font-display text-sm font-bold tracking-wider text-primary mb-4">
-        THREAT ACTIVITY (24H)
-      </h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-display text-sm font-bold tracking-wider text-primary">
+          THREAT ACTIVITY (24H)
+        </h2>
+        <PanelToolbar
+          onDownloadJSON={() => downloadJSON(data, "threat-timeline-24h")}
+          onDownloadCSV={() => downloadCSV(data, "threat-timeline-24h")}
+        />
+      </div>
       <div className="h-48">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data}>
@@ -50,22 +60,8 @@ const ThreatTimelineChart = () => {
                 fontFamily: "JetBrains Mono",
               }}
             />
-            <Area
-              type="monotone"
-              dataKey="threats"
-              stroke="hsl(0, 80%, 55%)"
-              fill="url(#threatGradient)"
-              strokeWidth={2}
-              name="Threats"
-            />
-            <Area
-              type="monotone"
-              dataKey="blocked"
-              stroke="hsl(160, 100%, 45%)"
-              fill="url(#blockedGradient)"
-              strokeWidth={2}
-              name="Blocked"
-            />
+            <Area type="monotone" dataKey="threats" stroke="hsl(0, 80%, 55%)" fill="url(#threatGradient)" strokeWidth={2} name="Threats" />
+            <Area type="monotone" dataKey="blocked" stroke="hsl(160, 100%, 45%)" fill="url(#blockedGradient)" strokeWidth={2} name="Blocked" />
           </AreaChart>
         </ResponsiveContainer>
       </div>

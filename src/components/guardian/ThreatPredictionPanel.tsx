@@ -1,5 +1,7 @@
 import { THREAT_PREDICTIONS } from "@/lib/guardian-data";
 import { AlertTriangle, TrendingUp } from "lucide-react";
+import PanelToolbar from "./PanelToolbar";
+import { downloadJSON, downloadCSV } from "@/lib/export-utils";
 
 const categoryColors = {
   critical: "text-destructive border-destructive/30 bg-destructive/5",
@@ -23,7 +25,25 @@ const ThreatPredictionPanel = () => {
         <h2 className="font-display text-sm font-bold tracking-wider text-accent">
           THREAT PREDICTION
         </h2>
-        <TrendingUp className="h-4 w-4 text-muted-foreground ml-auto" />
+        <div className="ml-auto flex items-center gap-1">
+          <PanelToolbar
+            onDownloadJSON={() => downloadJSON(THREAT_PREDICTIONS, "threat-predictions")}
+            onDownloadCSV={() =>
+              downloadCSV(
+                THREAT_PREDICTIONS.map((t) => ({
+                  name: t.name,
+                  confidence: t.confidence,
+                  riskScore: t.riskScore,
+                  timeframe: t.timeframe,
+                  impact: t.impact,
+                  category: t.category,
+                })),
+                "threat-predictions"
+              )
+            }
+          />
+          <TrendingUp className="h-4 w-4 text-muted-foreground" />
+        </div>
       </div>
 
       <div className="space-y-3">

@@ -1,5 +1,7 @@
 import { HISTORICAL_BREACHES } from "@/lib/guardian-data";
 import { History } from "lucide-react";
+import PanelToolbar from "./PanelToolbar";
+import { downloadJSON, downloadCSV } from "@/lib/export-utils";
 
 const severityColor = {
   critical: "border-l-destructive text-destructive",
@@ -15,6 +17,21 @@ const BreachHistoryPanel = () => {
         <h2 className="font-display text-sm font-bold tracking-wider text-foreground">
           BREACH HISTORY
         </h2>
+        <PanelToolbar
+          className="ml-auto"
+          onDownloadJSON={() => downloadJSON(HISTORICAL_BREACHES, "breach-history")}
+          onDownloadCSV={() =>
+            downloadCSV(
+              HISTORICAL_BREACHES.map((b) => ({
+                year: b.year,
+                name: b.name,
+                impact: b.impact,
+                severity: b.severity,
+              })),
+              "breach-history"
+            )
+          }
+        />
       </div>
       <div className="space-y-2">
         {HISTORICAL_BREACHES.map((breach) => (
