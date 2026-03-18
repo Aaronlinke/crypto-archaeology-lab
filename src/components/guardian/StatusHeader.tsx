@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
-import { Shield, Activity } from "lucide-react";
+import { Shield, Activity, Settings } from "lucide-react";
 
-const StatusHeader = () => {
+interface StatusHeaderProps {
+  onToggleSettings?: () => void;
+  settingsOpen?: boolean;
+}
+
+const StatusHeader = ({ onToggleSettings, settingsOpen }: StatusHeaderProps) => {
   const [time, setTime] = useState(new Date());
   const [cycleCount, setCycleCount] = useState(1847);
 
@@ -44,6 +49,19 @@ const StatusHeader = () => {
           <div className="text-muted-foreground font-mono">
             {time.toLocaleTimeString("de-DE")} UTC
           </div>
+          {onToggleSettings && (
+            <button
+              onClick={onToggleSettings}
+              className={`h-8 w-8 flex items-center justify-center rounded-md border transition-colors ${
+                settingsOpen
+                  ? "border-accent bg-accent/10 text-accent"
+                  : "border-border hover:border-primary/40 text-muted-foreground hover:text-primary"
+              }`}
+              title="System Settings"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
     </header>

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { SCANNED_WALLETS, type WalletScan } from "@/lib/guardian-data";
 import { Search, ShieldAlert, ShieldCheck, ShieldQuestion } from "lucide-react";
+import PanelToolbar from "./PanelToolbar";
+import { downloadJSON, downloadCSV } from "@/lib/export-utils";
 
 const statusConfig = {
   critical: { icon: ShieldAlert, color: "text-destructive", bg: "bg-destructive/10", label: "CRITICAL" },
@@ -18,9 +20,28 @@ const WalletScannerPanel = () => {
         <h2 className="font-display text-sm font-bold tracking-wider text-cyber-blue">
           WALLET SCANNER
         </h2>
-        <span className="ml-auto text-[10px] text-muted-foreground font-mono animate-pulse">
-          LIVE SCANNING...
-        </span>
+        <div className="ml-auto flex items-center gap-2">
+          <PanelToolbar
+            onDownloadJSON={() => downloadJSON(SCANNED_WALLETS, "wallet-scans")}
+            onDownloadCSV={() =>
+              downloadCSV(
+                SCANNED_WALLETS.map((w) => ({
+                  address: w.address,
+                  riskScore: w.riskScore,
+                  balance: w.balance,
+                  status: w.status,
+                  generationEra: w.generationEra,
+                  riskFactors: w.riskFactors,
+                  lastChecked: w.lastChecked,
+                })),
+                "wallet-scans"
+              )
+            }
+          />
+          <span className="text-[10px] text-muted-foreground font-mono animate-pulse">
+            LIVE
+          </span>
+        </div>
       </div>
 
       <div className="space-y-2">

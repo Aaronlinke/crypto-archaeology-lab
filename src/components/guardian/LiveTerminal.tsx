@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Terminal } from "lucide-react";
+import { Terminal, Trash2 } from "lucide-react";
+import PanelToolbar from "./PanelToolbar";
+import { downloadText } from "@/lib/export-utils";
+import { useGuardianSettings } from "@/lib/guardian-settings";
 
 const LOG_MESSAGES = [
   { type: "info", msg: "🔍 Scanning block #834,291..." },
@@ -25,23 +28,32 @@ const typeColors = {
 };
 
 const LiveTerminal = () => {
+  const { settings } = useGuardianSettings();
   const [logs, setLogs] = useState<Array<{ time: string; type: string; msg: string }>>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!settings.terminalVisible) return;
     let idx = 0;
     const interval = setInterval(() => {
       const logEntry = LOG_MESSAGES[idx % LOG_MESSAGES.length];
       const time = new Date().toLocaleTimeString("de-DE");
-      setLogs((prev) => [...prev.slice(-20), { time, ...logEntry }]);
+      setLogs((prev) => [...prev.slice(-(settings.maxLogEntries - 1)), { time, ...logEntry }]);
       idx++;
     }, 2500);
     return () => clearInterval(interval);
-  }, []);
+  }, [settings.terminalVisible, settings.maxLogEntries]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [logs]);
+
+  if (!settings.terminalVisible) return null;
+
+  const handleExportLogs = () => {
+    const text = logs.map((l) => `[${l.time}] [${l.type.toUpperCase()}] ${l.msg}`).join("\n");
+    downloadText(text, `terminal-logs-${new Date().toISOString().slice(0, 19)}.log`);
+  };
 
   return (
     <div className="rounded-lg border border-border bg-card p-5">
@@ -50,7 +62,19 @@ const LiveTerminal = () => {
         <h2 className="font-display text-sm font-bold tracking-wider text-primary">
           LIVE TERMINAL
         </h2>
-        <span className="ml-auto h-2 w-2 rounded-full bg-primary animate-pulse" />
+        <div className="ml-auto flex items-center gap-1">
+          <button
+            onClick={() => setLogs([])}
+            className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted transition-colors"
+            title="Clear"
+          >
+            <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive transition-colors" />
+          </button>
+          <PanelToolbar
+            onDownloadJSON={() => handleExportLogs()}
+          />
+          <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+        </div>
       </div>
       <div
         ref={scrollRef}
