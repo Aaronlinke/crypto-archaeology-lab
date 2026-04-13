@@ -74,7 +74,7 @@ interface Props {
 const ReverseChainVisualizer = ({ animating = false, direction = "forward" }: Props) => {
   const [activeLayer, setActiveLayer] = useState(-1);
   const [isRunning, setIsRunning] = useState(false);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const layers = direction === "reverse" ? [...CHAIN_LAYERS].reverse() : CHAIN_LAYERS;
 

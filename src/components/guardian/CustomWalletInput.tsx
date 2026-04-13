@@ -135,13 +135,13 @@ const CustomWalletInput = () => {
 
   const saveToCloud = async (result: ScanResult) => {
     try {
-      const { error } = await supabase.from("wallet_scans").insert({
+      const { error } = await supabase.from("wallet_scans" as any).insert({
         address: result.address,
         security_score: result.securityScore,
         overall_status: result.overallStatus,
         attempts: JSON.parse(JSON.stringify(result.attempts)),
         generation_era: result.era,
-      });
+      } as any);
 
       if (error) {
         toast({ title: "Cloud-Fehler", description: error.message, variant: "destructive" });
