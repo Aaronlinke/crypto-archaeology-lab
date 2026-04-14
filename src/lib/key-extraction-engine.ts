@@ -202,6 +202,9 @@ export function runExtractionAttempts(address: string, era: string): ExtractionA
         ? `⚠️ MATCH — PID-Entropy: Key in Kandidat #${Math.floor(Math.random() * 32768)}`
         : "Adresse nicht im Debian-Bug-Zeitraum generiert",
       timeMs: isDebianEra ? 420 : 380,
+      details: isDebianEra
+        ? "Adresse aus dem Zeitraum des Debian OpenSSL Bugs. Entropy nur PID-basiert (15 Bit statt 256 Bit). Vollständige Enumeration aller 32.768 Schlüssel möglich."
+        : "Generierungszeitpunkt liegt außerhalb des betroffenen Zeitraums (Mai 2006 – Mai 2008).",
       extractedHex: isDebianEra ? genHex(64, address + "debian") : undefined,
       iterations: isDebianEra ? "32,768 / 32,768 (100%)" : "32,768 / 32,768 (0 matches)",
       computationLogs: [
