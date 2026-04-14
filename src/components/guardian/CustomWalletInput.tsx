@@ -1,25 +1,14 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
-  Search,
-  ShieldAlert,
-  ShieldCheck,
-  ShieldQuestion,
-  Play,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
-  Loader2,
-  ChevronDown,
-  ChevronUp,
-  Save,
+  Search, ShieldAlert, ShieldCheck, ShieldQuestion, Play, CheckCircle2,
+  XCircle, AlertTriangle, Loader2, ChevronDown, ChevronUp, Save, Terminal,
+  Copy, Check, Download,
 } from "lucide-react";
 import PanelToolbar from "./PanelToolbar";
-import { downloadJSON, downloadCSV } from "@/lib/export-utils";
+import { downloadJSON, downloadCSV, downloadText } from "@/lib/export-utils";
 import {
-  runExtractionAttempts,
-  computeSecurityScore,
-  determineOverallStatus,
-  type ExtractionAttempt,
+  runExtractionAttempts, computeSecurityScore, determineOverallStatus,
+  type ExtractionAttempt, type ComputationLog,
 } from "@/lib/key-extraction-engine";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -34,6 +23,7 @@ interface ScanResult {
   overallStatus: "safe" | "compromised" | "at-risk" | "unknown";
   currentStep: number;
   savedToCloud: boolean;
+  liveLog: string[];
 }
 
 const eraOptions = [
@@ -66,13 +56,25 @@ const attemptStatusLabel = {
   partial: "WEAK POINT",
 };
 
+const logTypeColor: Record<ComputationLog["type"], string> = {
+  info: "text-cyber-blue",
+  hex: "text-cyber-purple",
+  iteration: "text-muted-foreground",
+  result: "text-primary",
+  warning: "text-cyber-orange",
+  blocked: "text-destructive",
+};
+
 const CustomWalletInput = () => {
   const [address, setAddress] = useState("");
   const [era, setEra] = useState(eraOptions[5]);
   const [results, setResults] = useState<ScanResult[]>([]);
   const [expandedResult, setExpandedResult] = useState<string | null>(null);
   const [expandedAttempt, setExpandedAttempt] = useState<string | null>(null);
+  const [showLiveLog, setShowLiveLog] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const { toast } = useToast();
+  const logEndRef = useRef<HTMLDivElement>(null);
 
   const isValidAddress = (addr: string) => {
     return (
@@ -82,25 +84,25 @@ const CustomWalletInput = () => {
     );
   };
 
+  const handleCopy = (text: string, id: string) => {
+    navigator.clipboard.writeText(text).catch(() => {});
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
   const runScan = useCallback(() => {
     if (!address.trim()) return;
     const addr = address.trim();
 
-    // Add to results
     const newResult: ScanResult = {
-      address: addr,
-      era,
-      scanning: true,
-      completed: false,
-      attempts: [],
-      securityScore: 0,
-      overallStatus: "unknown",
-      currentStep: 0,
-      savedToCloud: false,
+      address: addr, era, scanning: true, completed: false, attempts: [],
+      securityScore: 0, overallStatus: "unknown", currentStep: 0, savedToCloud: false,
+      liveLog: [`[00:00.000] ▶ Starte 10-Vektor-Extraktion für ${addr.slice(0, 20)}...`],
     };
 
     setResults((prev) => [newResult, ...prev.filter((r) => r.address !== addr)]);
     setExpandedResult(addr);
+    setShowLiveLog(addr);
 
     const allAttempts = runExtractionAttempts(addr, era);
     let step = 0;
@@ -108,13 +110,25 @@ const CustomWalletInput = () => {
     const interval = setInterval(() => {
       if (step >= allAttempts.length) {
         clearInterval(interval);
-        const finalAttempts = allAttempts;
-        const score = computeSecurityScore(finalAttempts);
-        const status = determineOverallStatus(finalAttempts);
+        const score = computeSecurityScore(allAttempts);
+        const status = determineOverallStatus(allAttempts);
         setResults((prev) =>
           prev.map((r) =>
             r.address === addr
-              ? { ...r, scanning: false, completed: true, attempts: finalAttempts, securityScore: score, overallStatus: status, currentStep: finalAttempts.length }
+              ? {
+                  ...r, scanning: false, completed: true, attempts: allAttempts,
+                  securityScore: score, overallStatus: status, currentStep: allAttempts.length,
+                  liveLog: [
+                    ...r.liveLog,
+                    `[00:${String(step * 3 + 2).padStart(2, "0")}.000] ═══════════════════════════════════════`,
+                    `[00:${String(step * 3 + 2).padStart(2, "0")}.001] ▶ SCAN COMPLETE — Score: ${score}/100 — Status: ${status.toUpperCase()}`,
+                    status === "safe"
+                      ? `[00:${String(step * 3 + 2).padStart(2, "0")}.002] ✓ Alle 10 Extraktionsversuche GESCHEITERT — Wallet ist sicher`
+                      : status === "compromised"
+                      ? `[00:${String(step * 3 + 2).padStart(2, "0")}.002] ⚠ SCHLÜSSELEXTRAKTION MÖGLICH — Wallet ist KOMPROMITTIERT`
+                      : `[00:${String(step * 3 + 2).padStart(2, "0")}.002] ⚠ Schwachstellen detektiert — Wallet AT RISK`,
+                  ],
+                }
               : r
           )
         );
@@ -122,13 +136,28 @@ const CustomWalletInput = () => {
       }
 
       const current = allAttempts.slice(0, step + 1);
+      const attempt = allAttempts[step];
+      const ts = `00:${String(step * 3).padStart(2, "0")}`;
+
+      // Build log lines from computation logs
+      const newLogLines = [
+        `[${ts}.000] ─── Vektor ${step + 1}/10: ${attempt.vectorName} ───`,
+        ...attempt.computationLogs.map((log) => {
+          const prefix = log.type === "warning" || log.type === "result" ? "  ★" : log.type === "blocked" ? "  ✗" : "  │";
+          return `[${ts}.${String(log.timestamp).padStart(3, "0")}]${prefix} ${log.message}`;
+        }),
+        `[${ts}.999]   Status: ${attemptStatusLabel[attempt.status]} (${attempt.timeMs}ms)${attempt.iterations ? ` — ${attempt.iterations}` : ""}`,
+      ];
+
       setResults((prev) =>
         prev.map((r) =>
-          r.address === addr ? { ...r, attempts: current, currentStep: step + 1 } : r
+          r.address === addr
+            ? { ...r, attempts: current, currentStep: step + 1, liveLog: [...r.liveLog, ...newLogLines] }
+            : r
         )
       );
       step++;
-    }, 300);
+    }, 450);
 
     setAddress("");
   }, [address, era]);
@@ -142,21 +171,48 @@ const CustomWalletInput = () => {
         attempts: JSON.parse(JSON.stringify(result.attempts)),
         generation_era: result.era,
       };
-      // @ts-ignore - table may not exist in types yet
+      // @ts-ignore
       const { error } = await supabase.from("wallet_scans").insert(payload);
-
       if (error) {
         toast({ title: "Cloud-Fehler", description: error.message, variant: "destructive" });
         return;
       }
-
-      setResults((prev) =>
-        prev.map((r) => (r.address === result.address ? { ...r, savedToCloud: true } : r))
-      );
+      setResults((prev) => prev.map((r) => (r.address === result.address ? { ...r, savedToCloud: true } : r)));
       toast({ title: "Gespeichert", description: `Scan für ${result.address.slice(0, 12)}... in Cloud gespeichert` });
     } catch {
       toast({ title: "Fehler", description: "Cloud nicht verfügbar", variant: "destructive" });
     }
+  };
+
+  const exportFullReport = (result: ScanResult) => {
+    const lines = [
+      `CryptoGuardian X — Wallet Extraction Report`,
+      `${"=".repeat(60)}`,
+      `Address: ${result.address}`,
+      `Era: ${result.era}`,
+      `Score: ${result.securityScore}/100`,
+      `Status: ${result.overallStatus.toUpperCase()}`,
+      `Timestamp: ${new Date().toISOString()}`,
+      ``,
+      `EXTRACTION LOG`,
+      `${"─".repeat(60)}`,
+      ...result.liveLog,
+      ``,
+      `VECTOR DETAILS`,
+      `${"─".repeat(60)}`,
+      ...result.attempts.map((a, i) => [
+        `${i + 1}. ${a.vectorName}`,
+        `   Status: ${attemptStatusLabel[a.status]}`,
+        `   Method: ${a.method}`,
+        `   Result: ${a.result}`,
+        `   Time: ${a.timeMs}ms`,
+        a.extractedHex ? `   Extracted Hex: ${a.extractedHex}` : "",
+        a.iterations ? `   Iterations: ${a.iterations}` : "",
+        `   Details: ${a.details}`,
+        "",
+      ].filter(Boolean).join("\n")),
+    ];
+    downloadText(lines.join("\n"), `extraction-report-${result.address.slice(0, 12)}.txt`);
   };
 
   const completedResults = results.filter((r) => r.completed);
@@ -174,10 +230,7 @@ const CustomWalletInput = () => {
             onDownloadCSV={() =>
               downloadCSV(
                 completedResults.map((r) => ({
-                  address: r.address,
-                  era: r.era,
-                  status: r.overallStatus,
-                  score: r.securityScore,
+                  address: r.address, era: r.era, status: r.overallStatus, score: r.securityScore,
                   extracted: r.attempts.filter((a) => a.status === "extracted").length,
                   weakPoints: r.attempts.filter((a) => a.status === "partial").length,
                 })),
@@ -226,18 +279,17 @@ const CustomWalletInput = () => {
       </div>
 
       {/* Results */}
-      <div className="space-y-2 max-h-[500px] overflow-y-auto">
+      <div className="space-y-2 max-h-[600px] overflow-y-auto">
         {results.map((result) => {
           const cfg = statusConfig[result.overallStatus] || statusConfig.unknown;
           const Icon = result.scanning ? Loader2 : cfg.icon;
           const isExpanded = expandedResult === result.address;
+          const isLogOpen = showLiveLog === result.address;
 
           return (
             <div
               key={result.address}
-              className={`rounded-md border transition-all ${
-                isExpanded ? "border-primary/30 bg-primary/5" : "border-border bg-card"
-              }`}
+              className={`rounded-md border transition-all ${isExpanded ? "border-primary/30 bg-primary/5" : "border-border bg-card"}`}
             >
               <div className="p-3 flex items-center gap-3">
                 <Icon className={`h-4 w-4 shrink-0 ${result.scanning ? "animate-spin text-cyber-blue" : cfg.color}`} />
@@ -252,29 +304,53 @@ const CustomWalletInput = () => {
                   </div>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-[10px] text-muted-foreground">{result.era}</span>
+                    {result.scanning && (
+                      <span className="text-[10px] text-cyber-blue font-mono animate-pulse">
+                        Vektor {result.currentStep}/10
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
+                  {/* Live Log Toggle */}
+                  <button
+                    onClick={() => setShowLiveLog(isLogOpen ? null : result.address)}
+                    className={`p-1.5 rounded transition-colors ${isLogOpen ? "bg-cyber-blue/20 text-cyber-blue" : "hover:bg-muted/50 text-muted-foreground"}`}
+                    title="Live Computation Log"
+                  >
+                    <Terminal className="h-3.5 w-3.5" />
+                  </button>
                   {result.completed && !result.savedToCloud && (
-                    <button
-                      onClick={() => saveToCloud(result)}
-                      className="p-1.5 rounded hover:bg-primary/10 transition-colors"
-                      title="In Cloud speichern"
-                    >
+                    <button onClick={() => saveToCloud(result)} className="p-1.5 rounded hover:bg-primary/10 transition-colors" title="In Cloud speichern">
                       <Save className="h-3.5 w-3.5 text-primary" />
                     </button>
                   )}
-                  {result.savedToCloud && (
-                    <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+                  {result.completed && (
+                    <button onClick={() => exportFullReport(result)} className="p-1.5 rounded hover:bg-muted/50 transition-colors" title="Full Report Download">
+                      <Download className="h-3.5 w-3.5 text-muted-foreground" />
+                    </button>
                   )}
-                  <button
-                    onClick={() => setExpandedResult(isExpanded ? null : result.address)}
-                    className="p-1.5 rounded hover:bg-muted/50 transition-colors"
-                  >
+                  {result.savedToCloud && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
+                  <button onClick={() => setExpandedResult(isExpanded ? null : result.address)} className="p-1.5 rounded hover:bg-muted/50 transition-colors">
                     {isExpanded ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
                   </button>
                 </div>
               </div>
+
+              {/* Live Terminal Log */}
+              {isLogOpen && result.liveLog.length > 0 && (
+                <div className="mx-3 mb-2 rounded bg-background/80 border border-border/50 p-2 max-h-[200px] overflow-y-auto font-mono text-[9px] leading-relaxed scanline">
+                  {result.liveLog.map((line, i) => {
+                    const type: ComputationLog["type"] = line.includes("★") ? "result" : line.includes("✗") ? "blocked" : line.includes("⚠") ? "warning" : line.includes("0x") || line.includes("→") ? "hex" : line.includes("───") ? "info" : "iteration";
+                    return (
+                      <div key={i} className={`${logTypeColor[type]} ${line.includes("═══") ? "font-bold mt-1" : ""}`}>
+                        {line}
+                      </div>
+                    );
+                  })}
+                  <div ref={logEndRef} />
+                </div>
+              )}
 
               {/* Score bar */}
               {result.completed && (
@@ -319,7 +395,7 @@ const CustomWalletInput = () => {
                             <span className="text-[9px] text-muted-foreground font-mono">{attempt.timeMs}ms</span>
                           </button>
                           {isAttemptExp && (
-                            <div className="ml-6 mr-1 mb-1 p-2 rounded bg-muted/20 border border-border/50 space-y-1 animate-fade-in">
+                            <div className="ml-6 mr-1 mb-1 p-2 rounded bg-muted/20 border border-border/50 space-y-1.5 animate-fade-in">
                               <div className="text-[10px] text-muted-foreground">
                                 <span className="text-foreground font-semibold">Methode: </span>{attempt.method}
                               </div>
@@ -329,7 +405,43 @@ const CustomWalletInput = () => {
                                   {attempt.result}
                                 </span>
                               </div>
+                              {attempt.iterations && (
+                                <div className="text-[10px] text-muted-foreground">
+                                  <span className="text-foreground font-semibold">Iterationen: </span>
+                                  <span className="font-mono">{attempt.iterations}</span>
+                                </div>
+                              )}
+                              {attempt.extractedHex && (
+                                <div className="text-[10px]">
+                                  <span className="text-destructive font-semibold">Extrahierte Daten: </span>
+                                  <div className="flex items-center gap-1 mt-0.5">
+                                    <code className="text-[9px] font-mono text-destructive bg-destructive/5 px-1.5 py-0.5 rounded break-all">
+                                      {attempt.extractedHex}
+                                    </code>
+                                    <button
+                                      onClick={() => handleCopy(attempt.extractedHex!, `hex-${attempt.vectorId}`)}
+                                      className="p-0.5 rounded hover:bg-muted/50 shrink-0"
+                                    >
+                                      {copiedId === `hex-${attempt.vectorId}` ? <Check className="h-3 w-3 text-primary" /> : <Copy className="h-3 w-3 text-muted-foreground" />}
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
                               <div className="text-[9px] text-muted-foreground leading-relaxed">{attempt.details}</div>
+
+                              {/* Inline computation log */}
+                              <details className="mt-1">
+                                <summary className="text-[9px] text-cyber-blue cursor-pointer hover:text-cyber-blue/80">
+                                  ▸ Computation Log ({attempt.computationLogs.length} Einträge)
+                                </summary>
+                                <div className="mt-1 p-1.5 rounded bg-background/60 border border-border/30 font-mono text-[8px] space-y-0.5 max-h-[120px] overflow-y-auto">
+                                  {attempt.computationLogs.map((log, li) => (
+                                    <div key={li} className={logTypeColor[log.type]}>
+                                      [{String(log.timestamp).padStart(4, "0")}ms] {log.message}
+                                    </div>
+                                  ))}
+                                </div>
+                              </details>
                             </div>
                           )}
                         </div>
@@ -353,6 +465,9 @@ const CustomWalletInput = () => {
                             : "AT RISK — Schwachstellen detektiert"}
                         </span>
                       </div>
+                      <div className="text-[9px] text-muted-foreground mt-1 font-mono">
+                        {result.attempts.filter((a) => a.status === "failed").length} blockiert · {result.attempts.filter((a) => a.status === "extracted").length} extrahiert · {result.attempts.filter((a) => a.status === "partial").length} Schwachstellen
+                      </div>
                     </div>
                   )}
 
@@ -372,7 +487,7 @@ const CustomWalletInput = () => {
           <div className="text-center py-8 text-muted-foreground">
             <Search className="h-8 w-8 mx-auto mb-2 opacity-30" />
             <p className="text-xs">Gib eine Bitcoin-Adresse ein und starte den Scan</p>
-            <p className="text-[10px] mt-1">10 Angriffsvektoren · Live-Extraktion · Cloud-Persistenz</p>
+            <p className="text-[10px] mt-1">10 Angriffsvektoren · Live-Extraktion · Hex-Output · Cloud-Persistenz</p>
           </div>
         )}
       </div>
