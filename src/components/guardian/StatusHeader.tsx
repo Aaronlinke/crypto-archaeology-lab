@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Shield, Activity, Settings } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Shield, Activity, Settings, History as HistoryIcon } from "lucide-react";
 
 interface StatusHeaderProps {
   onToggleSettings?: () => void;
@@ -49,6 +50,14 @@ const StatusHeader = ({ onToggleSettings, settingsOpen }: StatusHeaderProps) => 
           <div className="text-muted-foreground font-mono">
             {time.toLocaleTimeString("de-DE")} UTC
           </div>
+          <Link
+            to="/history"
+            className="h-8 px-3 flex items-center gap-1.5 rounded-md border border-border hover:border-primary/40 text-muted-foreground hover:text-primary transition-colors text-xs font-mono tracking-wider"
+            title="Scan-Historie"
+          >
+            <HistoryIcon className="h-3.5 w-3.5" />
+            HISTORY
+          </Link>
           {onToggleSettings && (
             <button
               onClick={onToggleSettings}

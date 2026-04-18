@@ -10,7 +10,7 @@ import {
   runExtractionAttempts, computeSecurityScore, determineOverallStatus,
   type ExtractionAttempt, type ComputationLog,
 } from "@/lib/key-extraction-engine";
-import { supabase } from "@/integrations/supabase/client";
+import { saveScan } from "@/lib/scan-history";
 import { useToast } from "@/hooks/use-toast";
 
 interface ScanResult {
@@ -163,24 +163,21 @@ const CustomWalletInput = () => {
   }, [address, era]);
 
   const saveToCloud = async (result: ScanResult) => {
-    try {
-      const payload = {
-        address: result.address,
-        security_score: result.securityScore,
-        overall_status: result.overallStatus,
-        attempts: JSON.parse(JSON.stringify(result.attempts)),
-        generation_era: result.era,
-      };
-      // @ts-ignore
-      const { error } = await supabase.from("wallet_scans").insert(payload);
-      if (error) {
-        toast({ title: "Cloud-Fehler", description: error.message, variant: "destructive" });
-        return;
-      }
-      setResults((prev) => prev.map((r) => (r.address === result.address ? { ...r, savedToCloud: true } : r)));
-      toast({ title: "Gespeichert", description: `Scan für ${result.address.slice(0, 12)}... in Cloud gespeichert` });
-    } catch {
-      toast({ title: "Fehler", description: "Cloud nicht verfügbar", variant: "destructive" });
+    const res = await saveScan({
+      address: result.address,
+      security_score: result.securityScore,
+      overall_status: result.overallStatus,
+      generation_era: result.era,
+      attempts: result.attempts,
+    });
+    setResults((prev) => prev.map((r) => (r.address === result.address ? { ...r, savedToCloud: true } : r)));
+    if (res.source === "cloud") {
+      toast({ title: "Cloud-Sync erfolgreich", description: `Scan in Cloud + Lokal gespeichert` });
+    } else {
+      toast({
+        title: "Lokal gespeichert",
+        description: `Cloud nicht erreichbar — in Browser-Historie gesichert${res.error ? ` (${res.error.slice(0, 60)})` : ""}`,
+      });
     }
   };
 
