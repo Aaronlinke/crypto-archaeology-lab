@@ -68,8 +68,7 @@ export async function saveScan(input: SaveScanInput): Promise<{ ok: boolean; sou
 
   // Try cloud
   try {
-    // @ts-ignore — table may not be in generated types yet
-    const { error } = await supabase.from("wallet_scans").insert({
+    const { error } = await (supabase as any).from("wallet_scans").insert({
       address: input.address,
       security_score: input.security_score,
       overall_status: input.overall_status,
@@ -90,8 +89,7 @@ export async function loadScans(): Promise<StoredScan[]> {
   const local = readLocal();
 
   try {
-    // @ts-ignore — table may not be in generated types yet
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("wallet_scans")
       .select("*")
       .order("created_at", { ascending: false })
