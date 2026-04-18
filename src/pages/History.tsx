@@ -276,9 +276,9 @@ const History = () => {
                 const expanded = expandedId === scan.id;
                 return (
                   <div key={scan.id}>
-                    <button
+                    <div
                       onClick={() => setExpandedId(expanded ? null : scan.id)}
-                      className="w-full px-4 py-3 flex items-center gap-3 hover:bg-muted/20 transition-colors text-left"
+                      className="w-full px-4 py-3 flex items-center gap-3 hover:bg-muted/20 transition-colors text-left cursor-pointer"
                     >
                       <div className={`shrink-0 p-1.5 rounded border ${meta.bg}`}>
                         <Icon className={`h-4 w-4 ${meta.color}`} />
@@ -329,7 +329,7 @@ const History = () => {
                           DETAIL
                         </Link>
                       </div>
-                    </button>
+                    </div>
 
                     {expanded && (
                       <div className="px-4 pb-4 bg-muted/10">
