@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowLeft, Search, ShieldAlert, ShieldCheck, ShieldQuestion, Cloud, HardDrive,
-  Trash2, RefreshCw, Download, Filter,
+  Trash2, RefreshCw, Download, Filter, ExternalLink,
 } from "lucide-react";
 import { loadScans, clearLocalHistory, type StoredScan } from "@/lib/scan-history";
 import { downloadJSON, downloadCSV } from "@/lib/export-utils";
@@ -319,6 +319,15 @@ const History = () => {
                             hour: "2-digit", minute: "2-digit",
                           })}
                         </span>
+                        <Link
+                          to={`/history/${scan.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="px-2 py-1 rounded bg-primary/10 border border-primary/30 text-primary text-[10px] font-mono hover:bg-primary/20 transition-colors flex items-center gap-1"
+                          title="Detail-Ansicht öffnen"
+                        >
+                          <ExternalLink className="h-2.5 w-2.5" />
+                          DETAIL
+                        </Link>
                       </div>
                     </button>
 
