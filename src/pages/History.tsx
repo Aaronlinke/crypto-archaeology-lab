@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowLeft, Search, ShieldAlert, ShieldCheck, ShieldQuestion, Cloud, HardDrive,
-  Trash2, RefreshCw, Download, Filter,
+  Trash2, RefreshCw, Download, Filter, ExternalLink,
 } from "lucide-react";
 import { loadScans, clearLocalHistory, type StoredScan } from "@/lib/scan-history";
 import { downloadJSON, downloadCSV } from "@/lib/export-utils";
@@ -276,9 +276,9 @@ const History = () => {
                 const expanded = expandedId === scan.id;
                 return (
                   <div key={scan.id}>
-                    <button
+                    <div
                       onClick={() => setExpandedId(expanded ? null : scan.id)}
-                      className="w-full px-4 py-3 flex items-center gap-3 hover:bg-muted/20 transition-colors text-left"
+                      className="w-full px-4 py-3 flex items-center gap-3 hover:bg-muted/20 transition-colors text-left cursor-pointer"
                     >
                       <div className={`shrink-0 p-1.5 rounded border ${meta.bg}`}>
                         <Icon className={`h-4 w-4 ${meta.color}`} />
@@ -319,8 +319,17 @@ const History = () => {
                             hour: "2-digit", minute: "2-digit",
                           })}
                         </span>
+                        <Link
+                          to={`/history/${scan.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="px-2 py-1 rounded bg-primary/10 border border-primary/30 text-primary text-[10px] font-mono hover:bg-primary/20 transition-colors flex items-center gap-1"
+                          title="Detail-Ansicht öffnen"
+                        >
+                          <ExternalLink className="h-2.5 w-2.5" />
+                          DETAIL
+                        </Link>
                       </div>
-                    </button>
+                    </div>
 
                     {expanded && (
                       <div className="px-4 pb-4 bg-muted/10">
