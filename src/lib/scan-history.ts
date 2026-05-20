@@ -125,3 +125,8 @@ export async function loadScans(): Promise<StoredScan[]> {
 export function clearLocalHistory() {
   localStorage.removeItem(LOCAL_KEY);
 }
+
+/** Sync access to locally cached scans (latest first). */
+export function getScans(): StoredScan[] {
+  return readLocal();
+}
