@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Shield, Activity, Settings, History as HistoryIcon } from "lucide-react";
+import { Shield, Activity, Settings, History as HistoryIcon, Ghost } from "lucide-react";
 
 interface StatusHeaderProps {
   onToggleSettings?: () => void;
   settingsOpen?: boolean;
+  onOpenGhost?: () => void;
 }
 
-const StatusHeader = ({ onToggleSettings, settingsOpen }: StatusHeaderProps) => {
+const StatusHeader = ({ onToggleSettings, settingsOpen, onOpenGhost }: StatusHeaderProps) => {
   const [time, setTime] = useState(new Date());
   const [cycleCount, setCycleCount] = useState(1847);
 
@@ -58,6 +59,17 @@ const StatusHeader = ({ onToggleSettings, settingsOpen }: StatusHeaderProps) => 
             <HistoryIcon className="h-3.5 w-3.5" />
             HISTORY
           </Link>
+          {onOpenGhost && (
+            <button
+              onClick={onOpenGhost}
+              className="h-8 px-3 flex items-center gap-1.5 rounded-md border border-accent/40 hover:border-accent text-accent/80 hover:text-accent hover:shadow-[0_0_12px_hsl(var(--accent)/0.4)] transition-all text-xs font-mono tracking-wider"
+              title="GHOST :: Shard Decomposer (Ctrl+Shift+G)"
+            >
+              <Ghost className="h-3.5 w-3.5" />
+              GHOST
+              <span className="text-[9px] opacity-60 ml-1">⌃⇧G</span>
+            </button>
+          )}
           {onToggleSettings && (
             <button
               onClick={onToggleSettings}
