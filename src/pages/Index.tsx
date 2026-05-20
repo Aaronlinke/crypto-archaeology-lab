@@ -11,10 +11,24 @@ import SettingsPanel from "@/components/guardian/SettingsPanel";
 import ExploitDetailPanel from "@/components/guardian/ExploitDetailPanel";
 import CustomWalletInput from "@/components/guardian/CustomWalletInput";
 import ReverseChainVisualizer from "@/components/guardian/ReverseChainVisualizer";
+import GhostShardDecomposer from "@/components/guardian/GhostShardDecomposer";
 import { GuardianSettingsProvider } from "@/lib/guardian-settings";
+import { useEffect } from "react";
 
 const Index = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [ghostOpen, setGhostOpen] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && (e.key === "G" || e.key === "g")) {
+        e.preventDefault();
+        setGhostOpen((o) => !o);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   return (
     <GuardianSettingsProvider>
@@ -48,6 +62,14 @@ const Index = () => {
           </div>
           <SystemModulesPanel />
         </main>
+        <GhostShardDecomposer open={ghostOpen} onClose={() => setGhostOpen(false)} />
+        {/* secret trigger: tiny glyph bottom-right */}
+        <button
+          onClick={() => setGhostOpen(true)}
+          title="ghost"
+          aria-label="ghost"
+          className="fixed bottom-3 right-3 h-2 w-2 rounded-full bg-accent/40 hover:bg-accent hover:shadow-[0_0_10px_hsl(var(--accent))] transition-all z-50"
+        />
       </div>
     </GuardianSettingsProvider>
   );
