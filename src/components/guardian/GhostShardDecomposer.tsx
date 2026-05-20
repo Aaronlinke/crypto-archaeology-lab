@@ -235,16 +235,32 @@ const GhostShardDecomposer = ({ open, onClose }: GhostShardDecomposerProps) => {
     const attempts: ExtractionAttempt[] = VECTORS.map((name, i) => {
       const b = vectorStats[i];
       const breached = b.bits > 380; // threshold
-      return {
+      const attempt: ExtractionAttempt = {
         vectorId: `ghost-v${i}`,
         vectorName: name,
+        method: "GHOST :: shard-XOR reduction",
         status: breached ? "extracted" : "failed",
-        confidence: Math.min(1, b.bits / 500),
-        durationMs: 1 + (b.count % 9),
+        progress: 100,
+        result: breached
+          ? `Synthetic key fragment recovered (0x${hex(b.topHash)})`
+          : `Insufficient shard entropy (${b.bits}b)`,
+        timeMs: 1 + (b.count % 9),
         details: `[GHOST] ${b.count} shards routed · ${b.bits} synthetic bits · topHash=0x${hex(b.topHash)}`,
-        computationLog: [],
-        extractedData: breached ? `0x${hex(b.topHash)}` : undefined,
-      } as ExtractionAttempt;
+        computationLogs: [
+          {
+            timestamp: Date.now(),
+            type: "info",
+            message: `routed ${b.count} of ${SHARD_COUNT} shards into ${name}`,
+          },
+          {
+            timestamp: Date.now(),
+            type: "hex",
+            message: `xor-reduced topHash = 0x${hex(b.topHash)}`,
+          },
+        ],
+        extractedHex: breached ? `0x${hex(b.topHash)}` : undefined,
+      };
+      return attempt;
     });
     const breached = attempts.filter((a) => a.status === "extracted").length;
     const score = Math.max(0, 100 - breached * 12);
