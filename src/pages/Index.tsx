@@ -36,6 +36,7 @@ const Index = () => {
         <StatusHeader
           onToggleSettings={() => setSettingsOpen((o) => !o)}
           settingsOpen={settingsOpen}
+          onOpenGhost={() => setGhostOpen(true)}
         />
         <main className="p-6 space-y-6 max-w-[1600px] mx-auto">
           {settingsOpen && <SettingsPanel />}

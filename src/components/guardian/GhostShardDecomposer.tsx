@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { X, Cpu, Zap, Download, Layers, Activity, Binary, Hash } from "lucide-react";
+import { X, Cpu, Zap, Download, Layers, Activity, Binary, Hash, GitBranch, Save, Inbox, KeyRound } from "lucide-react";
+import { getScans, saveScan } from "@/lib/scan-history";
+import type { ExtractionAttempt } from "@/lib/key-extraction-engine";
+import { toast } from "@/hooks/use-toast";
 
 interface GhostShardDecomposerProps {
   open: boolean;
@@ -13,6 +16,8 @@ interface Shard {
   weight: number;
   status: "queued" | "processing" | "done";
   payload: string;
+  vector: number; // 0..9 — routed attack vector
+  bits: number;   // synthetic bits contributed
 }
 
 const CATEGORIES = [
@@ -20,6 +25,19 @@ const CATEGORIES = [
   "CONSTRAINT", "DEPENDENCY", "CONTEXT", "TEMPORAL", "NUMERIC",
   "BOOLEAN", "REFERENCE", "META", "EMBEDDING", "FEATURE",
   "TOKEN", "NGRAM", "VECTOR", "GRAPH-NODE", "GRAPH-EDGE",
+] as const;
+
+const VECTORS = [
+  "Base58Check Decode",
+  "RIPEMD-160 Preimage",
+  "SHA-256 Preimage",
+  "PubKey Chain Exposure",
+  "ECDLP Pollard-ρ",
+  "Debian OpenSSL (CVE-2008-0166)",
+  "Brain Wallet Dictionary",
+  "ECDSA Nonce-Reuse",
+  "HNP Lattice (Biased Nonces)",
+  "Quantum / Shor",
 ] as const;
 
 const SHARD_COUNT = 1000;
@@ -53,6 +71,8 @@ function buildShards(input: string): Shard[] {
       weight,
       status: "queued",
       payload: `seg[${i.toString().padStart(4, "0")}] :: ${base.slice((i * 3) % Math.max(base.length, 1), ((i * 3) % Math.max(base.length, 1)) + 12)}`,
+      vector: (h2 ^ (h1 >>> 3)) % VECTORS.length,
+      bits: (h2 & 0xff) % 8 + 1,
     });
   }
   return shards;
@@ -64,6 +84,7 @@ const GhostShardDecomposer = ({ open, onClose }: GhostShardDecomposerProps) => {
   const [running, setRunning] = useState(false);
   const [done, setDone] = useState(0);
   const [logs, setLogs] = useState<string[]>([]);
+  const [saved, setSaved] = useState(false);
   const rafRef = useRef<number | null>(null);
   const idxRef = useRef(0);
 
@@ -82,11 +103,13 @@ const GhostShardDecomposer = ({ open, onClose }: GhostShardDecomposerProps) => {
     setShards(s);
     setDone(0);
     setRunning(true);
+    setSaved(false);
     idxRef.current = 0;
     setLogs([
       `[GHOST] decomposer engaged :: payload=${input.length}b`,
       `[GHOST] generating ${SHARD_COUNT} shards :: seed=0x${hex(fnv1a(input))}`,
       `[GHOST] dispatch :: 32 parallel workers online`,
+      `[GHOST] routing shards into ${VECTORS.length} attack vectors`,
     ]);
 
     const tick = () => {
@@ -133,6 +156,38 @@ const GhostShardDecomposer = ({ open, onClose }: GhostShardDecomposerProps) => {
     return byCat;
   }, [shards]);
 
+  // ROUTING: shards → 10 attack vectors (only processed ones count)
+  const vectorStats = useMemo(() => {
+    const buckets: { count: number; bits: number; topHash: number }[] = Array.from(
+      { length: VECTORS.length },
+      () => ({ count: 0, bits: 0, topHash: 0 }),
+    );
+    for (const s of shards) {
+      if (s.status !== "done") continue;
+      const b = buckets[s.vector];
+      b.count += 1;
+      b.bits += s.bits;
+      b.topHash ^= parseInt(s.hash.slice(0, 8), 16) >>> 0;
+    }
+    return buckets;
+  }, [shards]);
+
+  // Reduce to a synthetic 256-bit candidate key by chained XOR per vector
+  const candidateKey = useMemo(() => {
+    if (done < SHARD_COUNT) return "";
+    const words: string[] = [];
+    for (let i = 0; i < 8; i++) {
+      let w = 0;
+      for (const s of shards) {
+        if (s.status !== "done") continue;
+        const slice = parseInt(s.hash.slice((i * 4) % 16, ((i * 4) % 16) + 8), 16) >>> 0;
+        w = (w ^ slice) >>> 0;
+      }
+      words.push(hex(w));
+    }
+    return words.join("");
+  }, [shards, done]);
+
   const exportReport = () => {
     const lines = [
       `# GHOST SHARD REPORT`,
@@ -152,6 +207,76 @@ const GhostShardDecomposer = ({ open, onClose }: GhostShardDecomposerProps) => {
     a.download = `ghost-shards-${Date.now()}.txt`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const loadLastScan = () => {
+    const scans = getScans();
+    if (!scans.length) {
+      toast({
+        title: "Keine Historie",
+        description: "Führe zuerst einen Wallet-Scan aus.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const last = scans[0];
+    setInput(
+      `WALLET ${last.address} :: era=${last.generation_era} :: score=${last.security_score} :: breached=${last.vectors_breached}/${last.vectors_tested}`,
+    );
+    toast({
+      title: "Letzten Scan geladen",
+      description: `Adresse ${last.address.slice(0, 12)}… als Payload eingesetzt.`,
+    });
+  };
+
+  const saveToHistory = async () => {
+    if (done < SHARD_COUNT) return;
+    // Build synthetic attempts from the 10 vector buckets
+    const attempts: ExtractionAttempt[] = VECTORS.map((name, i) => {
+      const b = vectorStats[i];
+      const breached = b.bits > 380; // threshold
+      const attempt: ExtractionAttempt = {
+        vectorId: `ghost-v${i}`,
+        vectorName: name,
+        method: "GHOST :: shard-XOR reduction",
+        status: breached ? "extracted" : "failed",
+        progress: 100,
+        result: breached
+          ? `Synthetic key fragment recovered (0x${hex(b.topHash)})`
+          : `Insufficient shard entropy (${b.bits}b)`,
+        timeMs: 1 + (b.count % 9),
+        details: `[GHOST] ${b.count} shards routed · ${b.bits} synthetic bits · topHash=0x${hex(b.topHash)}`,
+        computationLogs: [
+          {
+            timestamp: Date.now(),
+            type: "info",
+            message: `routed ${b.count} of ${SHARD_COUNT} shards into ${name}`,
+          },
+          {
+            timestamp: Date.now(),
+            type: "hex",
+            message: `xor-reduced topHash = 0x${hex(b.topHash)}`,
+          },
+        ],
+        extractedHex: breached ? `0x${hex(b.topHash)}` : undefined,
+      };
+      return attempt;
+    });
+    const breached = attempts.filter((a) => a.status === "extracted").length;
+    const score = Math.max(0, 100 - breached * 12);
+    const res = await saveScan({
+      address: `GHOST://${input.slice(0, 32).replace(/\s+/g, "_") || "anonymous"}`,
+      security_score: score,
+      overall_status: breached >= 4 ? "compromised" : breached >= 2 ? "at-risk" : "safe",
+      generation_era: "ghost-decomposition",
+      attempts,
+    });
+    setSaved(true);
+    toast({
+      title: res.ok ? "GHOST-Lauf gespeichert" : "Speichern fehlgeschlagen",
+      description: `Quelle: ${res.source.toUpperCase()} · ${breached}/10 Vektoren reagiert.`,
+      variant: res.ok ? "default" : "destructive",
+    });
   };
 
   if (!open) return null;
@@ -217,11 +342,25 @@ const GhostShardDecomposer = ({ open, onClose }: GhostShardDecomposerProps) => {
               {running ? `DEKOMPONIERE… ${done}/1000` : "DEKOMPONIEREN (×1000)"}
             </button>
             <button
+              onClick={loadLastScan}
+              disabled={running}
+              className="px-3 h-9 rounded-md border border-border hover:border-primary text-muted-foreground hover:text-primary font-mono text-xs tracking-wider disabled:opacity-30 flex items-center gap-2"
+            >
+              <Inbox className="h-3.5 w-3.5" /> LETZTEN SCAN LADEN
+            </button>
+            <button
               onClick={exportReport}
               disabled={done === 0}
               className="px-3 h-9 rounded-md border border-border hover:border-accent text-muted-foreground hover:text-accent font-mono text-xs tracking-wider disabled:opacity-30 flex items-center gap-2"
             >
               <Download className="h-3.5 w-3.5" /> SHARD-MAP (.txt)
+            </button>
+            <button
+              onClick={saveToHistory}
+              disabled={done < SHARD_COUNT || saved}
+              className="px-3 h-9 rounded-md border border-primary/40 hover:border-primary text-primary/80 hover:text-primary font-mono text-xs tracking-wider disabled:opacity-30 flex items-center gap-2"
+            >
+              <Save className="h-3.5 w-3.5" /> {saved ? "GESPEICHERT" : "IN HISTORY ABLEGEN"}
             </button>
             <span className="ml-auto text-[10px] font-mono text-muted-foreground">
               shortcut: <span className="text-accent">CTRL+SHIFT+G</span>
@@ -244,6 +383,7 @@ const GhostShardDecomposer = ({ open, onClose }: GhostShardDecomposerProps) => {
         </div>
 
         {shards.length > 0 && (
+          <>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Shard matrix */}
             <div className="lg:col-span-2 rounded-lg border border-border bg-card/60 p-3">
@@ -312,6 +452,73 @@ const GhostShardDecomposer = ({ open, onClose }: GhostShardDecomposerProps) => {
               </div>
             </div>
           </div>
+
+          {/* Pipeline: Shards → Vectors → Candidate Key */}
+          <div className="rounded-lg border border-primary/30 bg-card/60 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-mono tracking-widest text-primary flex items-center gap-2">
+                <GitBranch className="h-3.5 w-3.5" /> PIPELINE · SHARDS → 10 ATTACK-VEKTOREN → KANDIDATEN-KEY
+              </h3>
+              <span className="text-[10px] font-mono text-muted-foreground">
+                routing-fn: (h2 ^ h1&gt;&gt;3) mod 10
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {VECTORS.map((name, i) => {
+                const b = vectorStats[i];
+                const breached = b.bits > 380;
+                const pct = Math.min(100, (b.bits / 500) * 100);
+                return (
+                  <div
+                    key={i}
+                    className={`rounded-md border px-3 py-2 bg-background/60 ${
+                      breached ? "border-destructive/50" : "border-border"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-[10px] font-mono">
+                      <span className="text-foreground">
+                        <span className="text-muted-foreground">V{(i + 1).toString().padStart(2, "0")}</span>{" "}
+                        {name}
+                      </span>
+                      <span className={breached ? "text-destructive" : "text-accent"}>
+                        {breached ? "BREACHED" : "HOLDING"}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex items-center gap-2 text-[10px] font-mono text-muted-foreground">
+                      <span>{b.count} shards</span>
+                      <span>·</span>
+                      <span>{b.bits} bits</span>
+                      <span>·</span>
+                      <span>topHash=0x{hex(b.topHash)}</span>
+                    </div>
+                    <div className="mt-1 h-1 w-full bg-muted rounded overflow-hidden">
+                      <div
+                        className={`h-full ${breached ? "bg-destructive" : "bg-accent/70"}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="rounded-md border border-accent/40 bg-black/60 p-3">
+              <div className="flex items-center gap-2 text-[10px] font-mono text-accent tracking-widest mb-1">
+                <KeyRound className="h-3.5 w-3.5" />
+                XOR-REDUKTION · KANDIDATEN-PRIVATE-KEY (256-bit, synthetisch)
+              </div>
+              <div className="font-mono text-[11px] text-primary break-all">
+                {candidateKey
+                  ? `0x${candidateKey}`
+                  : `// wartet auf Vollabschluss (${done}/${SHARD_COUNT}) …`}
+              </div>
+              <div className="text-[9px] font-mono text-muted-foreground mt-1">
+                hinweis: rein deterministisch aus shards abgeleitet — kein echter wallet-key.
+              </div>
+            </div>
+          </div>
+          </>
         )}
 
         {shards.length === 0 && (
