@@ -71,7 +71,7 @@ function buildShards(input: string): Shard[] {
       weight,
       status: "queued",
       payload: `seg[${i.toString().padStart(4, "0")}] :: ${base.slice((i * 3) % Math.max(base.length, 1), ((i * 3) % Math.max(base.length, 1)) + 12)}`,
-      vector: (h2 ^ (h1 >>> 3)) % VECTORS.length,
+      vector: ((h2 ^ (h1 >>> 3)) >>> 0) % VECTORS.length,
       bits: (h2 & 0xff) % 8 + 1,
     });
   }
