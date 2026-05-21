@@ -12,6 +12,7 @@ import ExploitDetailPanel from "@/components/guardian/ExploitDetailPanel";
 import CustomWalletInput from "@/components/guardian/CustomWalletInput";
 import ReverseChainVisualizer from "@/components/guardian/ReverseChainVisualizer";
 import GhostShardDecomposer from "@/components/guardian/GhostShardDecomposer";
+import { Ghost } from "lucide-react";
 import { GuardianSettingsProvider } from "@/lib/guardian-settings";
 import { useEffect } from "react";
 
@@ -40,6 +41,41 @@ const Index = () => {
         />
         <main className="p-6 space-y-6 max-w-[1600px] mx-auto">
           {settingsOpen && <SettingsPanel />}
+
+          {/* GHOST discoverability banner */}
+          <button
+            onClick={() => setGhostOpen(true)}
+            className="w-full group relative overflow-hidden rounded-lg border border-accent/40 bg-gradient-to-r from-accent/10 via-background to-primary/10 px-4 py-3 text-left hover:border-accent transition-all"
+          >
+            <div
+              className="pointer-events-none absolute inset-0 opacity-20"
+              style={{
+                backgroundImage:
+                  "repeating-linear-gradient(0deg, hsl(var(--accent)) 0, hsl(var(--accent)) 1px, transparent 1px, transparent 4px)",
+              }}
+            />
+            <div className="relative flex items-center gap-3">
+              <div className="relative">
+                <Ghost className="h-6 w-6 text-accent" />
+                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-accent animate-ping" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-[10px] tracking-[0.25em] text-accent">
+                  CLASSIFIED // OPERATOR-LEVEL Ω
+                </div>
+                <div className="text-sm font-display tracking-wider text-foreground">
+                  GHOST :: SHARD DECOMPOSER — Anfrage → 1000 Shards → 10 Vektoren → Kandidaten-Key
+                </div>
+              </div>
+              <span className="hidden md:inline text-[10px] font-mono text-muted-foreground">
+                CTRL+SHIFT+G
+              </span>
+              <span className="px-3 h-8 rounded-md bg-accent text-accent-foreground text-xs font-mono tracking-wider flex items-center group-hover:opacity-90">
+                ÖFFNEN
+              </span>
+            </div>
+          </button>
+
           <StatsGrid />
 
           {/* Custom Wallet Scanner + Reverse Chain Visualizer */}
@@ -64,13 +100,15 @@ const Index = () => {
           <SystemModulesPanel />
         </main>
         <GhostShardDecomposer open={ghostOpen} onClose={() => setGhostOpen(false)} />
-        {/* secret trigger: tiny glyph bottom-right */}
+        {/* Floating ghost trigger — always reachable */}
         <button
           onClick={() => setGhostOpen(true)}
-          title="ghost"
-          aria-label="ghost"
-          className="fixed bottom-3 right-3 h-2 w-2 rounded-full bg-accent/40 hover:bg-accent hover:shadow-[0_0_10px_hsl(var(--accent))] transition-all z-50"
-        />
+          title="GHOST :: Shard Decomposer (Ctrl+Shift+G)"
+          aria-label="GHOST mode"
+          className="fixed bottom-4 right-4 h-14 w-14 rounded-full bg-accent text-accent-foreground border-2 border-accent shadow-[0_0_24px_hsl(var(--accent)/0.6)] hover:shadow-[0_0_32px_hsl(var(--accent))] hover:scale-105 active:scale-95 transition-all z-50 flex items-center justify-center animate-pulse-glow"
+        >
+          <Ghost className="h-6 w-6" />
+        </button>
       </div>
     </GuardianSettingsProvider>
   );
