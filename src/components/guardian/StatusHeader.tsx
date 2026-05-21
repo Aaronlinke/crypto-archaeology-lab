@@ -21,9 +21,9 @@ const StatusHeader = ({ onToggleSettings, settingsOpen, onOpenGhost }: StatusHea
   }, []);
 
   return (
-    <header className="border-b border-border bg-card/50 backdrop-blur-sm px-6 py-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+    <header className="border-b border-border bg-card/50 backdrop-blur-sm px-4 md:px-6 py-3 md:py-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3 md:gap-4 min-w-0">
           <div className="relative">
             <Shield className="h-10 w-10 text-primary animate-pulse-glow" />
             <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-primary animate-ping" />
@@ -38,7 +38,7 @@ const StatusHeader = ({ onToggleSettings, settingsOpen, onOpenGhost }: StatusHea
           </div>
         </div>
 
-        <div className="flex items-center gap-8 text-xs">
+        <div className="flex flex-wrap items-center gap-3 md:gap-6 text-xs">
           <div className="flex items-center gap-2">
             <Activity className="h-4 w-4 text-primary" />
             <span className="text-muted-foreground">CYCLE</span>
