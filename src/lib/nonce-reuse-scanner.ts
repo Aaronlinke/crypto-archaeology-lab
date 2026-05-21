@@ -156,3 +156,34 @@ export async function scanAddress(
     const key = sig.pubkeyHex + "|" + sig.r.toString(16);
     const arr = buckets.get(key) ?? [];
     arr.push(sig);
+    buckets.set(key, arr);
+  }
+
+  const collisions: CollisionResult[] = [];
+  for (const [, arr] of buckets) {
+    if (arr.length < 2) continue;
+    // distinct z required (same z + same r + same key = same signature, no leak)
+    const distinctZ = new Set(arr.map((a) => a.z.toString(16)));
+    if (distinctZ.size < 2) continue;
+    const [a, b] = arr;
+    let recovery: Recovery | null = null;
+    let recoveryError: string | undefined;
+    try {
+      const compressed = a.pubkeyHex.length === 66;
+      recovery = recoverFromNonceReuse(a.z, a.s, b.z, b.s, a.r, compressed);
+    } catch (e) {
+      recoveryError = (e as Error).message;
+    }
+    collisions.push({ pubkeyHex: a.pubkeyHex, r: a.r, sigs: arr, recovery, recoveryError });
+  }
+
+  return {
+    address,
+    txCount: txids.length,
+    legacyInputs,
+    signatures: sigs,
+    collisions,
+    skipped,
+    durationMs: performance.now() - t0,
+  };
+}
