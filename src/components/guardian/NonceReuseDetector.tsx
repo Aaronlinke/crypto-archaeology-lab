@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Search, AlertTriangle, CheckCircle2, Loader2, KeyRound, ExternalLink } from "lucide-react";
+import { Search, AlertTriangle, CheckCircle2, Loader2, KeyRound, ExternalLink, Download } from "lucide-react";
 import { scanAddress, type ScanReport, type ScanProgress } from "@/lib/nonce-reuse-scanner";
+import { downloadJSON, downloadCSV } from "@/lib/export-utils";
 
 const short = (h: string, n = 10) => h.length <= 2 * n ? h : `${h.slice(0, n)}…${h.slice(-n)}`;
 const bigHex = (n: bigint) => n.toString(16).padStart(64, "0");
@@ -22,6 +23,36 @@ export default function NonceReuseDetector() {
     } finally {
       setBusy(false); setProgress(null);
     }
+  };
+
+  const exportJSON = () => {
+    if (!report) return;
+    const safe = {
+      ...report,
+      signatures: report.signatures.map((s) => ({
+        ...s, r: bigHex(s.r), s: bigHex(s.s), z: bigHex(s.z),
+      })),
+      collisions: report.collisions.map((c) => ({
+        pubkeyHex: c.pubkeyHex,
+        r: bigHex(c.r),
+        sigs: c.sigs.map((s) => ({ ...s, r: bigHex(s.r), s: bigHex(s.s), z: bigHex(s.z) })),
+        recovery: c.recovery
+          ? { k: bigHex(c.recovery.k), d: c.recovery.hex, wif: c.recovery.wif }
+          : null,
+        recoveryError: c.recoveryError,
+      })),
+    };
+    downloadJSON(safe, `nonce-scan-${report.address}-${Date.now()}`);
+  };
+
+  const exportCSV = () => {
+    if (!report) return;
+    const rows = report.signatures.map((s) => ({
+      txid: s.txid, vin: s.vin, pubkey: s.pubkeyHex,
+      r: bigHex(s.r), s: bigHex(s.s), z: bigHex(s.z),
+      sighashType: s.sighashType, prevTxid: s.prevTxid, prevVout: s.prevVout,
+    }));
+    downloadCSV(rows, `nonce-scan-${report.address}-${Date.now()}`);
   };
 
   return (
@@ -63,6 +94,16 @@ export default function NonceReuseDetector() {
 
       {report && (
         <div className="space-y-3">
+          <div className="flex gap-2">
+            <button onClick={exportJSON}
+              className="px-3 py-1.5 rounded border border-primary/40 hover:bg-primary/10 text-xs font-mono flex items-center gap-1">
+              <Download className="h-3 w-3" /> JSON ({report.signatures.length} sigs)
+            </button>
+            <button onClick={exportCSV}
+              className="px-3 py-1.5 rounded border border-primary/40 hover:bg-primary/10 text-xs font-mono flex items-center gap-1">
+              <Download className="h-3 w-3" /> CSV
+            </button>
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs font-mono">
             <div className="rounded border border-border p-2"><div className="text-muted-foreground">TXs</div><div className="text-foreground">{report.txCount}</div></div>
             <div className="rounded border border-border p-2"><div className="text-muted-foreground">Legacy Inputs</div><div className="text-foreground">{report.legacyInputs}</div></div>

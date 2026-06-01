@@ -13,6 +13,8 @@ import CustomWalletInput from "@/components/guardian/CustomWalletInput";
 import ReverseChainVisualizer from "@/components/guardian/ReverseChainVisualizer";
 import GhostShardDecomposer from "@/components/guardian/GhostShardDecomposer";
 import NonceReuseDetector from "@/components/guardian/NonceReuseDetector";
+import BatchNonceScanner from "@/components/guardian/BatchNonceScanner";
+import LiveChainStats from "@/components/guardian/LiveChainStats";
 import MathReferencePanel from "@/components/guardian/MathReferencePanel";
 import { Ghost } from "lucide-react";
 import { GuardianSettingsProvider } from "@/lib/guardian-settings";
@@ -80,7 +82,11 @@ const Index = () => {
 
           <StatsGrid />
 
+          <LiveChainStats />
+
           <NonceReuseDetector />
+
+          <BatchNonceScanner />
 
           <MathReferencePanel />
 
