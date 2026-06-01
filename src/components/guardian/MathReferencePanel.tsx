@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Sigma, Calculator, CheckCircle2, AlertTriangle } from "lucide-react";
 import { secp256k1 } from "@noble/curves/secp256k1.js";
-import { sha256 } from "@noble/hashes/sha2";
+import { sha256 } from "@noble/hashes/sha2.js";
 import { N, modInv, bigToHex, recoverFromNonceReuse, privToWIF } from "@/lib/ecdsa-recovery";
 
 const bytesToHexLocal = (b: Uint8Array) =>

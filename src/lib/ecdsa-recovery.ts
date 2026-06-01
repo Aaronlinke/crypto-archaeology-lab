@@ -7,8 +7,8 @@
 // n is the order of the secp256k1 group.
 
 import { secp256k1 } from "@noble/curves/secp256k1.js";
-import { sha256 } from "@noble/hashes/sha2";
-import { ripemd160 } from "@noble/hashes/legacy";
+import { sha256 } from "@noble/hashes/sha2.js";
+import { ripemd160 } from "@noble/hashes/legacy.js";
 import { base58check } from "@scure/base";
 import { bytesToHex } from "./btc-tx-parser";
 
