@@ -4,6 +4,9 @@ import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { sha256 } from "@noble/hashes/sha2";
 import { N, modInv, bigToHex, recoverFromNonceReuse, privToWIF } from "@/lib/ecdsa-recovery";
 
+const bytesToHexLocal = (b: Uint8Array) =>
+  Array.from(b).map((x) => x.toString(16).padStart(2, "0")).join("");
+
 // ---------------------------------------------------------------------------
 // Konstanten secp256k1 (siehe Abschnitt B / V / X der Referenz)
 // ---------------------------------------------------------------------------
@@ -114,8 +117,8 @@ export default function MathReferencePanel() {
     // Konstruiere zwei Signaturen mit identischem k für einen festen d
     const d = 0xdeadbeefcafebabe1234567890abcdef1234567890abcdef1234567890abcdefn % N_SECP;
     const k = 0xfeedface00112233445566778899aabbccddeeff00112233445566778899aabbn % N_SECP;
-    const z1 = BigInt("0x" + Buffer.from(sha256(new TextEncoder().encode("msg-1"))).toString("hex"));
-    const z2 = BigInt("0x" + Buffer.from(sha256(new TextEncoder().encode("msg-2"))).toString("hex"));
+    const z1 = BigInt("0x" + bytesToHexLocal(sha256(new TextEncoder().encode("msg-1"))));
+    const z2 = BigInt("0x" + bytesToHexLocal(sha256(new TextEncoder().encode("msg-2"))));
     const R = secp256k1.Point.BASE.multiply(k).toAffine();
     const r = mod(R.x, N_SECP);
     const kInv = modInv(k, N_SECP);
