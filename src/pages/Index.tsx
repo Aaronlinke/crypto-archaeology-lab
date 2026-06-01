@@ -13,6 +13,7 @@ import CustomWalletInput from "@/components/guardian/CustomWalletInput";
 import ReverseChainVisualizer from "@/components/guardian/ReverseChainVisualizer";
 import GhostShardDecomposer from "@/components/guardian/GhostShardDecomposer";
 import NonceReuseDetector from "@/components/guardian/NonceReuseDetector";
+import MathReferencePanel from "@/components/guardian/MathReferencePanel";
 import { Ghost } from "lucide-react";
 import { GuardianSettingsProvider } from "@/lib/guardian-settings";
 import { useEffect } from "react";
@@ -80,6 +81,8 @@ const Index = () => {
           <StatsGrid />
 
           <NonceReuseDetector />
+
+          <MathReferencePanel />
 
           {/* Custom Wallet Scanner + Reverse Chain Visualizer */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
