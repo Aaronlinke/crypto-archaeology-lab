@@ -10,7 +10,7 @@
 //   4. Serialize tx, append 4-byte LE sighash type (0x01).
 //   5. z = SHA256(SHA256(serialized)).
 
-import { sha256 } from "@noble/hashes/sha2";
+import { sha256 } from "@noble/hashes/sha2.js";
 import {
   ParsedTx, concat, encodeVarint, u32leBytes, u64leBytes, hexToBytes,
 } from "./btc-tx-parser";
