@@ -16,7 +16,7 @@ import NonceReuseDetector from "@/components/guardian/NonceReuseDetector";
 import BatchNonceScanner from "@/components/guardian/BatchNonceScanner";
 import LiveChainStats from "@/components/guardian/LiveChainStats";
 import MathReferencePanel from "@/components/guardian/MathReferencePanel";
-import CryptoPrimitivesNexus from "@/components/guardian/CryptoPrimitivesNexus";
+import CryptoSovereignCore from "@/components/guardian/CryptoSovereignCore";
 import { Ghost } from "lucide-react";
 import { GuardianSettingsProvider } from "@/lib/guardian-settings";
 import { useEffect } from "react";
@@ -91,7 +91,7 @@ const Index = () => {
 
           <MathReferencePanel />
 
-          <CryptoPrimitivesNexus />
+          <CryptoSovereignCore />
 
           {/* Custom Wallet Scanner + Reverse Chain Visualizer */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

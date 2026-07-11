@@ -85,7 +85,7 @@ function deriveEth(pub: { x: bigint; y: bigint }): string {
   return "0x" + addr;
 }
 
-export default function CryptoPrimitivesNexus() {
+export default function CryptoSovereignCore() {
   const [priv, setPriv] = useState<bigint>(() => randScalar());
   const [tick, setTick] = useState(0);
 
@@ -111,7 +111,7 @@ export default function CryptoPrimitivesNexus() {
   const exportJSON = () => {
     downloadJSON(
       {
-        module: "CryptoPrimitivesNexus",
+        module: "CryptoSovereignCore",
         curve: "secp256k1",
         constants: { P: toHex(P), N: toHex(N), Gx: toHex(GX), Gy: toHex(GY) },
         privateKey: toHex(priv),
@@ -134,7 +134,7 @@ export default function CryptoPrimitivesNexus() {
       <div className="flex items-center gap-2 flex-wrap">
         <Cpu className="h-5 w-5 text-primary" />
         <h2 className="font-display tracking-widest text-primary">
-          CRYPTO PRIMITIVES NEXUS · SECP256K1 ENGINE
+          CRYPTO SOVEREIGN CORE · SECP256K1 ENGINE
         </h2>
         <span className="ml-auto text-[10px] font-mono text-muted-foreground">
           native BigInt · O(log N) · EEA modinv
