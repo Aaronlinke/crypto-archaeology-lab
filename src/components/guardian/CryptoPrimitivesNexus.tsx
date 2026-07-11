@@ -125,7 +125,7 @@ export default function CryptoPrimitivesNexus() {
         },
         generatedAt: new Date().toISOString(),
       },
-      `crypto-primitives-${result.addr.slice(2, 10)}.json`
+      `crypto-primitives-${result.addr.slice(2, 10)}`
     );
   };
 
